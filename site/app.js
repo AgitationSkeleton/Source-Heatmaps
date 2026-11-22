@@ -19,7 +19,7 @@ const S = {
   humans: true, bots: true,
   teamsOff: new Set(), classesOff: new Set(), linesOn: new Set(),
   lineMin: 3, cut: null, psize: 1, overWalls: true,
-  loadToken: 0,
+  loadToken: 0, navSrc: null, navSources: [], wp: null, curAnalysis: null,
 };
 
 // ---------------------------------------------------------------- three.js scene
@@ -192,7 +192,7 @@ async function loadMap() {
   history.replaceState(null, '', `#${S.game}/${S.map}`);
   status(`Loading ${S.map}…`);
   ['geo', 'heat', 'lines', 'nav', 'navLinks', 'gaps', 'missing'].forEach((k) => disposeGroup(groups[k]));
-  S.cells = S.edges = S.nav = S.analysis = null;
+  S.cells = S.edges = S.nav = S.analysis = S.wp = S.curAnalysis = null;
   try {
     const meta = await getJSON(base() + 'meta.json');
     const [cb, eb, gb, nav, an] = await Promise.all([
@@ -212,6 +212,7 @@ async function loadMap() {
     S.classesOff.clear();
     S.linesOn.clear();
     buildChips();
+    setupNavSources();
     if (gb) buildGeo(parseGeo(gb));
     setupCut();
     frame();
@@ -274,9 +275,7 @@ function buildChips() {
     cc.append(chip(c.label, { icon, onToggle: (on) => { on ? S.classesOff.delete(c.id) : S.classesOff.add(c.id); rebuildHeat(); rebuildLines(); } }));
   }
   $('classChips').closest('section').hidden = all.length === 0;
-  const hasNav = !!S.nav;
-  for (const id of ['showNav', 'showNavLinks', 'showGaps', 'showMissing']) $(id).disabled = !hasNav;
-  $('navNote').textContent = hasNav ? `${S.nav.areas.length} areas (nav v${S.nav.version}.${S.nav.subversion})` : 'This map has no .nav file on the server.';
+
 }
 
 function buildStats() {
@@ -306,9 +305,25 @@ function buildGeo(g) {
   geom.setIndex(new THREE.BufferAttribute(g.idx, 1));
   geom.computeBoundingBox();
   geoBounds = geom.boundingBox;
-  const mat = new THREE.MeshLambertMaterial({ color: 0xf5f5f2, flatShading: true, clippingPlanes: clipList, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-  const mesh = new THREE.Mesh(geom, mat);
-  groups.geo.add(mesh);
+  // Walls (steep faces) are drawn two-sided so a wall seen from behind never looks like a hole;
+  // floors and ceilings stay one-sided, so roofs seen from above stay see-through (dollhouse view).
+  const P = g.pos, I = g.idx, flat = [], walls = [];
+  for (let t = 0; t < I.length; t += 3) {
+    const a = I[t] * 3, b = I[t + 1] * 3, c = I[t + 2] * 3;
+    const ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2];
+    const vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const len = Math.hypot(nx, ny, nz) || 1;
+    (Math.abs(nz / len) >= 0.7 ? flat : walls).push(I[t], I[t + 1], I[t + 2]);
+  }
+  const base = { color: 0xf5f5f2, flatShading: true, clippingPlanes: clipList, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 };
+  for (const [ids, side] of [[flat, THREE.FrontSide], [walls, THREE.DoubleSide]]) {
+    if (!ids.length) continue;
+    const part = new THREE.BufferGeometry();
+    part.setAttribute('position', geom.getAttribute('position'));
+    part.setIndex(ids);
+    groups.geo.add(new THREE.Mesh(part, new THREE.MeshLambertMaterial({ ...base, side })));
+  }
   if (!MOBILE || g.idx.length < 300000) {
     const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geom, 35), new THREE.LineBasicMaterial({ color: 0xb9bcc2, clippingPlanes: clipList }));
     groups.geo.add(edges);
@@ -452,9 +467,47 @@ function navCorners(a) {
   // [id, nwx, nwy, nwz, sex, sey, sez, nez, swz, attr]
   return [[a[1], a[2], a[3]], [a[4], a[2], a[7]], [a[4], a[5], a[6]], [a[1], a[5], a[8]]];
 }
+// ---- navigation sources: the map's .nav mesh and/or bot waypoint graphs (jk_botti, Parabot, FoXBot)
+const SRC_RE = /^[a-z0-9_]{1,24}$/;
+function setupNavSources() {
+  S.navSources = [];
+  if (S.nav) S.navSources.push({ key: 'nav', label: 'Nav mesh (.nav)' });
+  for (const w of (S.meta.has && S.meta.has.waypoints) || []) {
+    if (w && SRC_RE.test(w.key)) S.navSources.push({ key: w.key, label: String(w.label || w.key).slice(0, 40) });
+  }
+  const sel = $('navSrc');
+  sel.replaceChildren();
+  for (const s of S.navSources) sel.append(new Option(s.label, s.key));
+  if (!S.navSources.length) sel.append(new Option('none for this map', ''));
+  S.navSrc = S.navSources.length ? S.navSources[0].key : null;
+  sel.disabled = S.navSources.length < 2;
+  selectNavSource();
+}
+async function selectNavSource() {
+  const token = S.loadToken, key = S.navSrc;
+  S.wp = null; S.curAnalysis = null;
+  if (key === 'nav') S.curAnalysis = S.analysis;
+  else if (key && SRC_RE.test(key)) {
+    try {
+      const [wp, an] = await Promise.all([getJSON(base() + `waypoints_${key}.json`), getJSON(base() + `analysis_${key}.json`).catch(() => null)]);
+      if (token !== S.loadToken || key !== S.navSrc) return;
+      S.wp = wp; S.curAnalysis = an;
+    } catch { S.wp = null; }
+  }
+  const has = !!(key === 'nav' ? S.nav : S.wp);
+  for (const id of ['showNav', 'showNavLinks', 'showGaps', 'showMissing']) $(id).disabled = !has;
+  $('lblNav').textContent = key === 'nav' || !key ? 'Nav areas' : 'Waypoints';
+  $('lblLinks').textContent = key === 'nav' || !key ? 'Area connections' : 'Waypoint links';
+  $('navNote').textContent = !key ? 'No .nav file or bot waypoints for this map on the server.'
+    : key === 'nav' ? `${S.nav.areas.length} areas (nav v${S.nav.version}.${S.nav.subversion})`
+    : S.wp ? `${S.wp.nodes.length} waypoints, ${S.wp.links.length} links` : 'Could not load these waypoints.';
+  rebuildNav();
+  rebuildAnalysis();
+}
 function rebuildNav() {
   disposeGroup(groups.nav);
   disposeGroup(groups.navLinks);
+  if (S.navSrc && S.navSrc !== 'nav') return rebuildWaypoints();
   if (!S.nav) return;
   if ($('showNav').checked) {
     const A = S.nav.areas;
@@ -482,10 +535,38 @@ function rebuildNav() {
   }
   redraw();
 }
+function rebuildWaypoints() {
+  const W = S.wp;
+  if (!W) { redraw(); return; }
+  if ($('showNav').checked && W.nodes.length) {
+    const pos = new Float32Array(W.nodes.length * 3);
+    W.nodes.forEach((n, i) => pos.set([n[0], n[1], n[2]], i * 3));
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const p = new THREE.Points(g, new THREE.PointsMaterial({ size: worldPt(22) * S.psize, color: 0x2fc6d9, map: dot, transparent: true, alphaTest: 0.05, depthTest: !S.overWalls, clippingPlanes: clipList }));
+    p.renderOrder = 3;
+    groups.nav.add(p);
+  }
+  if ($('showNavLinks').checked && W.links.length) {
+    const pts = new Float32Array(W.links.length * 6);
+    let j = 0;
+    for (const [a, b] of W.links) {
+      const na = W.nodes[a], nb = W.nodes[b];
+      if (!na || !nb) continue;
+      pts.set([na[0], na[1], na[2], nb[0], nb[1], nb[2]], j); j += 6;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pts.subarray(0, j), 3));
+    const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x7ee0ff, transparent: true, opacity: 0.6, depthTest: !S.overWalls, clippingPlanes: clipList }));
+    l.renderOrder = 3;
+    groups.navLinks.add(l);
+  }
+  redraw();
+}
 function rebuildAnalysis() {
   disposeGroup(groups.gaps);
   disposeGroup(groups.missing);
-  const an = S.analysis;
+  const an = S.curAnalysis;
   if (!an) return;
   if ($('showGaps').checked && an.gaps.length) {
     const pos = new Float32Array(an.gaps.length * 3);
@@ -552,12 +633,13 @@ $('classesAll').addEventListener('click', () => { S.classesOff.clear(); $('class
 $('lineMin').addEventListener('input', (e) => { S.lineMin = Number(e.target.value); $('lineMinOut').textContent = e.target.value; });
 $('lineMin').addEventListener('change', () => rebuildLines());
 for (const id of ['showNav', 'showNavLinks']) $(id).addEventListener('change', rebuildNav);
+$('navSrc').addEventListener('change', (e) => { const v = e.target.value; if (S.navSources.some((s) => s.key === v)) { S.navSrc = v; selectNavSource(); } });
 for (const id of ['showGaps', 'showMissing']) $(id).addEventListener('change', rebuildAnalysis);
 $('showGeo').addEventListener('change', (e) => { groups.geo.visible = e.target.checked; redraw(); });
 $('cut').addEventListener('input', applyCut);
 $('overWalls').addEventListener('change', (e) => { S.overWalls = e.target.checked; rebuildHeat(); });
 $('psize').addEventListener('input', (e) => { S.psize = Number(e.target.value) / 100; $('psizeOut').textContent = e.target.value + '%'; });
-$('psize').addEventListener('change', () => { rebuildHeat(); rebuildAnalysis(); });
+$('psize').addEventListener('change', () => { rebuildHeat(); rebuildNav(); rebuildAnalysis(); });
 $('topBtn').addEventListener('click', () => frame(true));
 $('persBtn').addEventListener('click', () => frame(false));
 

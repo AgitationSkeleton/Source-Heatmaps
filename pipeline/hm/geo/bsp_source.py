@@ -25,7 +25,23 @@ MAX_LUMP = 256 * 1024 * 1024
 MAX_FACES = 1_000_000
 MAX_MODELS = 4096
 MAX_TRIS = 4_000_000
-STATIC_BRUSH_ENTS = {"func_brush", "func_wall", "func_detail", "func_illusionary_solid", "func_lod"}
+# Brush entities that are NOT drawn: triggers and invisible gameplay volumes. Every other brush
+# entity (doors, breakables, func_illusionary grates, rotating/moving parts, ...) is drawn at its
+# placed position; tool-textured faces are dropped separately.
+HIDDEN_BRUSH_ENTS = {
+    "func_respawnroom", "func_respawnroomvisualizer", "func_regenerate", "func_nobuild", "func_ladder",
+    "func_clip_vphysics", "func_capturezone", "func_smokevolume", "func_dustmotes", "func_dustcloud",
+    "func_precipitation", "func_areaportal", "func_areaportalwindow", "func_occluder", "func_bomb_target",
+    "func_buyzone", "func_hostage_rescue", "func_vehicleclip", "func_clip", "func_forcefield",
+    "func_upgradestation", "func_flagdetectionzone", "func_nogrenades", "func_suggested_build",
+    "func_croc", "func_passtime_goal", "func_vip_safety_zone", "func_escapezone", "func_vip_safetyzone",
+    "i_t_g", "info_tfgoal", "func_tfgoal", "info_areadef", "func_monsterclip", "func_hostage_rescue",
+}
+
+
+def drawn_brush_entity(classname):
+    c = (classname or "").lower()
+    return not (c.startswith(("trigger_", "func_nav_", "func_nav")) or c in HIDDEN_BRUSH_ENTS)
 
 
 class BSP:
@@ -138,7 +154,7 @@ def load(path, disp_step=None):
     seen_models = {0}
     for e in ents:
         m = e.get("model", "")
-        if e.get("classname", "") in STATIC_BRUSH_ENTS and m.startswith("*") and len(model_list) < MAX_MODELS:
+        if drawn_brush_entity(e.get("classname", "")) and m.startswith("*") and len(model_list) < MAX_MODELS:
             try:
                 mi = int(m[1:])
             except ValueError:

@@ -8,13 +8,12 @@ import struct
 
 import numpy as np
 
-from .bsp_source import MAX_FACES, MAX_FILE, MAX_MODELS, MAX_TRIS, _vec, _weld, parse_entities
+from .bsp_source import MAX_FACES, MAX_FILE, MAX_MODELS, MAX_TRIS, _vec, _weld, drawn_brush_entity, parse_entities
 
 L_ENTITIES, L_PLANES, L_TEXTURES, L_VERTICES = 0, 1, 2, 3
 L_TEXINFO, L_FACES, L_EDGES, L_SURFEDGES, L_MODELS = 6, 7, 12, 13, 14
 
 SKIP_TEX = ("sky", "clip", "aaatrigger", "origin", "null", "bevel", "hint", "skip", "trigger", "nodraw")
-STATIC_BRUSH_ENTS = {"func_wall", "func_illusionary", "func_wall_toggle", "func_detail"}
 
 
 def load(path):
@@ -77,7 +76,7 @@ def load(path):
     seen = {0}
     for e in ents:
         m = e.get("model", "")
-        if e.get("classname", "") in STATIC_BRUSH_ENTS and m.startswith("*") and len(model_list) < MAX_MODELS:
+        if drawn_brush_entity(e.get("classname", "")) and m.startswith("*") and len(model_list) < MAX_MODELS:
             try:
                 mi = int(m[1:])
             except ValueError:

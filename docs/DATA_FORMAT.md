@@ -114,6 +114,33 @@ Present when the map has a nav mesh. Only human data is used, because bots only 
 
 Both lists are heuristics: rocket jumps, teleporters and knockback show up too. Weigh them by count, and check them against the brushwork in the viewer.
 
+## Bot waypoints: `waypoints_<format>.json` and `analysis_<format>.json`
+
+These are for maps whose bots use waypoint graphs instead of (or as well as) a `.nav`. `meta.json` lists the
+sets the map has under `has.waypoints` (`[{"key", "label", "nodes"}]`).
+
+| key | bot | file read |
+|---|---|---|
+| `jkbotti` | jk_botti (HLDM) | `addons/jk_botti/waypoints/<map>.wpt` (gzip; HPB_bot lineage) |
+| `parabot` | Parabot (HLDM, DMC) | `addons/parabot/navpoints/<map>.pnf` |
+| `foxbot` | FoXBot (TFC) | `addons/foxbot/tfc/waypoints/<map>.fwp` |
+
+```json
+{"format": "jkbotti",
+ "nodes": [[x, y, z, flags], ...],
+ "links": [[fromIndex, toIndex], ...]}
+```
+
+- **Node positions:** where the bot stores them. GoldSrc waypoints sit at the player's centre, about 36 units above the feet.
+- **Flags:** the bot's own flag bits (ladder, jump, item and so on).
+- **Links:** directed, as the bot stores them.
+
+`analysis_<format>.json` has the same shape as `analysis.json`:
+- **gaps:** human ground cells with no waypoint within 256 units horizontally (72 vertically);
+- **missingLinks:** human moves between the nearest waypoints (within 128 units) that the graph doesn't connect within 3 hops, as `[fromNode, toNode, humanMoves, fromPos, toPos]`.
+
+hrcbot (HL2DM) stores its graph in an undocumented packed binary format (`<map>-<n>.hrcbot`), so it isn't read.
+
 ## Reading the files (Python)
 
 ```python

@@ -15,7 +15,7 @@ Collects where players and bots go on Source and GoldSrc servers, by team and cl
   - presence, deaths and airborne layers;
   - human and bot, team, and class filters, with class icons taken from your own game files;
   - movement lines in team colours;
-  - nav areas, area connections, nav gaps and missing links;
+  - nav areas, area connections, nav gaps and missing links, from the map's `.nav` or from bot waypoint graphs (jk_botti, Parabot, FoXBot);
   - a height cut for stacked floors;
   - a mobile layout.
 
@@ -117,6 +117,7 @@ Other cvars: `amx_heatmap_enable`, `amx_heatmap_interval` (1.0), `amx_heatmap_fl
    - **`secrets`**: the file from step 1.
    - **`site_src` / `site_dir`**: the `site/` folder and the folder your web server serves.
    - **`games`**: one entry per game key the plugin sends. List the install folders (the game folder that holds `maps/`) in `content` so the exporter can find BSP and NAV files. Add `team_colors` to pin team colours by index.
+   - **`waypoints`** (optional, per game): GoldSrc bot waypoint graphs to show and analyse, e.g. `[{"format": "jkbotti", "dir": ".../addons/jk_botti/waypoints"}]`. Formats: `jkbotti`, `parabot`, `foxbot` (see docs/DATA_FORMAT.md).
    - **`icons`** (optional; ready-made icons ship in `site/icons/`): where to read the class icons from your own game files (VTF loose files or inside VPKs). The site shows text-only chips for classes without an icon. Zombie is generated from Juggernaut, or from Sniper if Juggernaut is missing.
 2. Build the icons once with `python -I pipeline/run.py icons`.
 3. Schedule `python -I pipeline/run.py all` every 5 to 15 minutes (cron or Task Scheduler). It lowers its own priority, runs one instance at a time, rebuilds only maps that changed, and caches map geometry until the BSP changes.

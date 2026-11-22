@@ -103,7 +103,13 @@
         "2": "red",
         "3": "yellow",
         "4": "green"
-      }
+      },
+      "waypoints": [
+        {
+          "format": "foxbot",
+          "dir": "/srv/hlds/tfc/addons/foxbot/tfc/waypoints"
+        }
+      ]
     },
     "valve": {
       "name": "Half-Life Deathmatch",
@@ -113,7 +119,17 @@
       ],
       "team_colors": {
         "0": "purple"
-      }
+      },
+      "waypoints": [
+        {
+          "format": "jkbotti",
+          "dir": "/srv/hlds/valve/addons/jk_botti/waypoints"
+        },
+        {
+          "format": "parabot",
+          "dir": "/srv/hlds/valve/addons/parabot/navpoints"
+        }
+      ]
     }
   },
   "icons": {

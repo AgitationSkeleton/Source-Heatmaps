@@ -21,11 +21,13 @@ import numpy as np
 
 from .common import CLASSES, CLASS_KEYS, find_map_files, team_color, valid_map
 from .geo import LOADERS
+from .geo import waypoints as WP
 
 CELL, EDGE_CELL = 32, 64
 MAX_CELLS = 400_000          # per map, strongest first
-GEO_VERSION = 3
+GEO_VERSION = 4          # 4: all non-trigger brush entities
 NAV_VERSION = 1
+WPT_VERSION = 1
 
 
 def _atomic_write(path, data):
@@ -124,6 +126,27 @@ def build_nav(cfg, game, mapname, nav, out_dir, log, engine):
         return None
 
 
+def build_waypoints(cfg, game, mapname, fmt, src, out_dir, log):
+    """A bot's waypoint graph for this map (parsed in the isolated worker, cached by file signature)."""
+    cache_f = os.path.join(cfg["cache_dir"], game, "%s.wpt_%s.json" % (mapname, fmt))
+    dst = os.path.join(out_dir, "waypoints_%s.json" % fmt)
+    sig = "%s|%d" % (_sig(src), WPT_VERSION)
+    c = _cached(cache_f, sig, dst)
+    if c is None:
+        r = _run_worker("wpt", fmt, src, dst, log, "%s/%s %s" % (game, mapname, fmt))
+        if r is None:
+            _save_cache(cache_f, {"sig": sig, "failed": True})
+            return None
+        _save_cache(cache_f, {"sig": sig, "nodes": r["nodes"]})
+        log("waypoints %s/%s %s: %d nodes, %d links" % (game, mapname, fmt, r["nodes"], r["links"]))
+    elif c.get("failed"):
+        return None
+    try:
+        return json.load(open(dst))
+    except (OSError, ValueError):
+        return None
+
+
 # ---------------------------------------------------------------- analysis
 
 class _NavIndex:
@@ -171,6 +194,77 @@ class _NavIndex:
                 if bd is None or abs(dz) < bd:
                     best, bd = a[0], abs(dz)
         return best
+
+
+class _NodeIndex:
+    """Grid index of waypoint nodes: nearest node within a horizontal radius and a height window."""
+
+    def __init__(self, wp, g=128.0):
+        self.g, self.nodes, self.grid = g, wp["nodes"], {}
+        for i, n in enumerate(self.nodes):
+            self.grid.setdefault((int(math.floor(n[0] / g)), int(math.floor(n[1] / g))), []).append(i)
+        self.adj = {}
+        for a, b in wp["links"]:
+            self.adj.setdefault(a, set()).add(b)
+            self.adj.setdefault(b, set()).add(a)      # reachability check treats links as two-way
+
+    def nearest(self, x, y, z, rh, rv):
+        best, bd = None, None
+        r = int(math.ceil(rh / self.g))
+        gx, gy = int(math.floor(x / self.g)), int(math.floor(y / self.g))
+        for dx in range(-r, r + 1):
+            for dy in range(-r, r + 1):
+                for i in self.grid.get((gx + dx, gy + dy), ()):
+                    n = self.nodes[i]
+                    if abs(n[2] - z) > rv:
+                        continue
+                    d = math.hypot(n[0] - x, n[1] - y)
+                    if d <= rh and (bd is None or d < bd):
+                        best, bd = i, d
+        return best
+
+    def within(self, a, b, hops):
+        frontier, seen = {a}, {a}
+        for _ in range(hops):
+            frontier = {m for f in frontier for m in self.adj.get(f, ())} - seen
+            if b in frontier:
+                return True
+            seen |= frontier
+        return False
+
+
+def analyse_waypoints(wp, cells, edges):
+    """Same idea as the nav-mesh analysis, for a bot waypoint graph: human ground cells with no
+    waypoint within 256 units (72 vertically), and human moves between nearby waypoints that the
+    graph doesn't connect within 3 hops."""
+    idx = _NodeIndex(wp)
+    m = (cells["kind"] == 0) & (cells["bot"] == 0)
+    agg = {}
+    for x, y, z, n in zip(*(cells[k][m].tolist() for k in ("x", "y", "z", "n"))):
+        agg[(x, y, z)] = agg.get((x, y, z), 0) + n
+    gaps = []
+    for (x, y, z), n in agg.items():
+        wx, wy, wz = x * CELL + CELL / 2, y * CELL + CELL / 2, z * CELL + 1
+        if idx.nearest(wx, wy, wz + 36, 256, 72) is None:     # waypoints sit at player-centre height
+            gaps.append([int(wx), int(wy), int(z * CELL), n])
+    gaps.sort(key=lambda g: -g[3])
+    links = {}
+    em = edges["bot"] == 0
+    for x, y, z, x2, y2, z2, n in zip(*(edges[k][em].tolist() for k in ("x", "y", "z", "x2", "y2", "z2", "n"))):
+        pa = (x * EDGE_CELL + 32, y * EDGE_CELL + 32, z * EDGE_CELL + 32)
+        pb = (x2 * EDGE_CELL + 32, y2 * EDGE_CELL + 32, z2 * EDGE_CELL + 32)
+        a = idx.nearest(pa[0], pa[1], pa[2] + 36, 128, 96)
+        b = idx.nearest(pb[0], pb[1], pb[2] + 36, 128, 96)
+        if a is None or b is None or a == b or idx.within(a, b, 3):
+            continue
+        k = (a, b)
+        if k not in links:
+            links[k] = [0, list(pa), list(pb)]
+        links[k][0] += n
+    ml = sorted(([a, b, v[0], v[1], v[2]] for (a, b), v in links.items()), key=lambda r: -r[2])
+    return {"gaps": gaps[:5000], "missingLinks": ml[:2000],
+            "notes": {"gaps": "[x, y, z, humanSamples]: 32-unit cells with human ground presence and no waypoint within 256 units (72 vertically)",
+                      "missingLinks": "[fromNode, toNode, humanMoves, fromPos, toPos]: humans moved between these nearest waypoints but the graph doesn't connect them within 3 hops"}}
 
 
 def analyse(nav, cells, edges):
@@ -276,6 +370,24 @@ def export_map(cfg, conn, game, mapname, teams, log):
         except Exception as e:
             log("analysis %s/%s failed: %s" % (game, mapname, e))
 
+    wpts = []
+    for w in gcfg.get("waypoints", []):
+        fmt = w.get("format")
+        if fmt not in WP.LOADERS:
+            continue
+        src = WP.find_file(w.get("dir"), mapname, fmt)
+        if not src:
+            continue
+        wp = build_waypoints(cfg, game, mapname, fmt, src, out_dir, log)
+        if not wp:
+            continue
+        try:
+            _atomic_write(os.path.join(out_dir, "analysis_%s.json" % fmt), _json(analyse_waypoints(wp, cells, edges)))
+        except Exception as e:
+            log("waypoint analysis %s/%s %s failed: %s" % (game, mapname, fmt, e))
+            continue
+        wpts.append({"key": fmt, "label": WP.LABELS[fmt], "nodes": len(wp["nodes"])})
+
     present_cls = sorted(set(int(v) for v in np.unique(cells["cls"])))
     present_team = sorted(set(int(v) for v in np.unique(cells["team"])) | set(int(v) for v in np.unique(edges["team"])))
     meta = {
@@ -285,11 +397,11 @@ def export_map(cfg, conn, game, mapname, teams, log):
         "samples": {"human": int(cells["n"][(cells["kind"] != 1) & (cells["bot"] == 0)].sum()),
                     "bot": int(cells["n"][(cells["kind"] != 1) & (cells["bot"] == 1)].sum()),
                     "deaths": int(cells["n"][cells["kind"] == 1].sum())},
-        "teams": {str(t): teams.get(t, {"name": "Team %d" % t,
+        "teams": {str(t): teams.get(t, {"name": "Free-for-all" if t == 0 else "Team %d" % t,
                                         "color": team_color("", gcfg.get("team_colors", {}).get(str(t)))}) for t in present_team},
         "classes": [CLASS_KEYS[c] for c in present_cls if c in CLASS_KEYS],
         "bounds": bounds,
-        "has": {"geo": bool(bounds), "nav": bool(nav), "analysis": has_analysis},
+        "has": {"geo": bool(bounds), "nav": bool(nav), "analysis": has_analysis, "waypoints": wpts},
     }
     _atomic_write(os.path.join(out_dir, "meta.json"), _json(meta))
     return meta
@@ -307,6 +419,8 @@ def export(cfg, conn, full=False, log=print):
         ov = cfg["games"].get(g, {}).get("team_colors", {}).get(str(t))
         # some mods report localisation tokens (#FF_TEAM_BLUE): show the last word
         nice = name.lstrip("#").split("_")[-1].title() if name.startswith("#") else name
+        if int(t) == 0 and nice.lower() in ("unassigned", ""):
+            nice = "Free-for-all"            # free-for-all modes keep everyone on team 0
         teams_by_game.setdefault(g, {})[int(t)] = {"name": nice, "color": team_color(nice, ov)}
 
     done = 0
@@ -337,7 +451,8 @@ def export(cfg, conn, full=False, log=print):
         g = games_out.setdefault(game, {"name": cfg["games"][game]["name"], "engine": cfg["games"][game].get("engine", "source"),
                                        "icons": cfg["games"][game].get("icons", {}), "maps": []})
         g["maps"].append({"map": mapname, "samples": int(samples), "lastSeen": int(last_seen or 0),
-                          "geo": meta["has"]["geo"], "nav": meta["has"]["nav"]})
+                          "geo": meta["has"]["geo"], "nav": meta["has"]["nav"],
+                          "waypoints": [w["key"] for w in meta["has"].get("waypoints", [])]})
 
     manifest = {
         "generated": int(time.time()),

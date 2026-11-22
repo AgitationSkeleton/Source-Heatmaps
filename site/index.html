@@ -67,10 +67,11 @@
   </section>
 
   <section>
-    <h2>Nav mesh</h2>
-    <label class="row"><input type="checkbox" id="showNav"> Nav areas</label>
-    <label class="row"><input type="checkbox" id="showNavLinks"> Area connections</label>
-    <label class="row"><input type="checkbox" id="showGaps"> Nav gaps (human ground, no area)</label>
+    <h2>Navigation</h2>
+    <label class="row slider">Source <select id="navSrc" aria-label="Navigation source"></select></label>
+    <label class="row"><input type="checkbox" id="showNav"> <span id="lblNav">Nav areas</span></label>
+    <label class="row"><input type="checkbox" id="showNavLinks"> <span id="lblLinks">Area connections</span></label>
+    <label class="row"><input type="checkbox" id="showGaps"> Gaps (human ground, no nav coverage)</label>
     <label class="row"><input type="checkbox" id="showMissing"> Missing links (human moves, not connected)</label>
     <p id="navNote" class="note"></p>
   </section>

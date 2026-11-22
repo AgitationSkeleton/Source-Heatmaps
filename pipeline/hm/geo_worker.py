@@ -1,6 +1,6 @@
 """Parse one map file in an isolated child process (memory-capped, killed on timeout by the caller).
 
-usage: python -I geo_worker.py geo|nav <engine> <source file> <output file>
+usage: python -I geo_worker.py geo|nav|wpt <engine or waypoint format> <source file> <output file>
 Prints one JSON line with the result summary. Map files come from game installs and can be
 downloaded from anywhere, so they are parsed here rather than in the exporter process.
 """
@@ -54,10 +54,18 @@ def limit_memory():
 def main():
     kind, engine, src, dst = sys.argv[1:5]
     limit_memory()
+    tmp = dst + ".tmp"
+    if kind == "wpt":                     # bot waypoint graph; "engine" carries the format key
+        from hm.geo import waypoints as WP
+        r = WP.LOADERS[engine](src)
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(r, f, separators=(",", ":"), allow_nan=False)
+        os.replace(tmp, dst)
+        print(json.dumps({"nodes": len(r["nodes"]), "links": len(r["links"])}))
+        return
     from hm.geo import LOADERS
     import numpy as np
     loader = LOADERS[engine]
-    tmp = dst + ".tmp"
     if kind == "geo":
         r = loader["geometry"](src)
         V, I = r["vertices"], r["indices"]
