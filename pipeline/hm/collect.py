@@ -21,6 +21,7 @@ from .common import valid_map
 MAX_FILE = 8 * 1024 * 1024
 MAX_ROWS = 200000
 MAX_FILES_PER_RUN = 2000
+MAX_PENDING_FILES = 5000     # if the exporter stopped, drop folders never grow past this
 HEAD_RE = re.compile(r"HM1 game=([a-z0-9_]{1,32}) map=(\S{1,96}) port=(\d{1,5})")
 TEAM_RE = re.compile(r"T (\d{1,2}) ([A-Za-z0-9 _#()./+-]{1,64})")
 INSERT = "INSERT INTO hm_ingest (port,game,map,kind,team,cls,bot,x,y,z,x2,y2,z2,n) VALUES "
@@ -77,7 +78,17 @@ def collect(cfg, conn, log=print):
         for d in g.get("drop_dirs", []):
             if not os.path.isdir(d):
                 continue
-            names = sorted(f for f in os.listdir(d) if f.lower().endswith(".hm"))[:MAX_FILES_PER_RUN]
+            names = sorted(f for f in os.listdir(d) if f.lower().endswith(".hm"))
+            if len(names) > MAX_PENDING_FILES:
+                # names start with a unix time: the oldest go first
+                for old in names[:len(names) - MAX_PENDING_FILES]:
+                    try:
+                        os.remove(os.path.join(d, old))
+                    except OSError:
+                        pass
+                log("collect: %s had %d pending files; dropped the oldest %d" % (d, len(names), len(names) - MAX_PENDING_FILES))
+                names = names[len(names) - MAX_PENDING_FILES:]
+            names = names[:MAX_FILES_PER_RUN]
             for name in names:
                 path = os.path.join(d, name)
                 try:

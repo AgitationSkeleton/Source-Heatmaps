@@ -125,7 +125,16 @@ def main():
     logdir = cfg.get("log_dir") or os.path.join(os.path.dirname(cfg["site_dir"]), "logs")
     os.makedirs(logdir, exist_ok=True)
     os.makedirs(cfg["cache_dir"], exist_ok=True)
-    logf = open(os.path.join(logdir, "pipeline.log"), "a", encoding="utf-8")
+    logpath = os.path.join(logdir, "pipeline.log")
+    try:                                   # rotate at 5 MB, keep 3 old logs
+        if os.path.getsize(logpath) > 5 * 1024 * 1024:
+            for i in (2, 1):
+                if os.path.exists("%s.%d" % (logpath, i)):
+                    os.replace("%s.%d" % (logpath, i), "%s.%d" % (logpath, i + 1))
+            os.replace(logpath, logpath + ".1")
+    except OSError:
+        pass
+    logf = open(logpath, "a", encoding="utf-8")
 
     def log(msg):
         line = "%s %s" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), msg)

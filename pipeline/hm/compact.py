@@ -13,6 +13,10 @@ from .common import find_map_files, load_secrets, valid_map
 from .geo import LOADERS
 
 CHUNK = 200_000
+# disk budget for the aggregates (the exporter shows at most 400k cells / 60k edges per map)
+MAP_CELL_CAP = 300_000
+MAP_EDGE_CAP = 100_000
+GLOBAL_ROW_BUDGET = 20_000_000          # hm_cell + hm_edge rows, roughly 3 GB
 MAX_ROWS_PER_RUN = 3_000_000     # a flood is folded over several runs instead of one huge one
 
 # cells are 32 units, edges 64; Source maps are within +-16384 (+-32768 for extended-bounds mods).
@@ -113,6 +117,36 @@ def _fold_chunk(c, conn, lo, hi, games, valid, check, log, held):
     return good, dropped + (total - good)
 
 
+def enforce_caps(c, conn, log):
+    """Keep the aggregates bounded: per map, the weakest rows beyond the cap are dropped; if all maps
+    together still pass the global budget, single-sample rows (edges first) are pruned."""
+    c.execute("SELECT game, map FROM hm_map WHERE dirty = 1")
+    for game, mapname in c.fetchall():
+        for table, cap in (("hm_cell", MAP_CELL_CAP), ("hm_edge", MAP_EDGE_CAP)):
+            c.execute("SELECT COUNT(*) FROM " + table + " WHERE game = %s AND map = %s", (game, mapname))
+            n, = c.fetchone()
+            if n > cap:
+                c.execute("DELETE FROM " + table + " WHERE game = %s AND map = %s ORDER BY n ASC LIMIT %s",
+                          (game, mapname, n - cap))
+                conn.commit()
+                log("caps: %s/%s %s trimmed by %d row(s) to %d" % (game, mapname, table, n - cap, cap))
+    c.execute("SELECT table_name, table_rows FROM information_schema.tables "
+              "WHERE table_schema = DATABASE() AND table_name IN ('hm_cell', 'hm_edge')")
+    rows = sum(int(r or 0) for _, r in c.fetchall())
+    if rows <= GLOBAL_ROW_BUDGET:
+        return
+    log("caps: aggregates at ~%d rows, over the %d budget; pruning single-sample rows" % (rows, GLOBAL_ROW_BUDGET))
+    for table in ("hm_edge", "hm_cell"):
+        while rows > GLOBAL_ROW_BUDGET:
+            removed = c.execute("DELETE FROM " + table + " WHERE n <= 1 LIMIT 500000")
+            conn.commit()
+            rows -= removed
+            if removed < 500000:
+                break
+    if rows > GLOBAL_ROW_BUDGET:
+        log("caps: still over budget after pruning single-sample rows (~%d rows)" % rows)
+
+
 def compact(cfg, conn, log=print):
     games = readable_games(cfg, log)
     held = [g for g in cfg["games"] if g not in games]
@@ -153,4 +187,5 @@ def compact(cfg, conn, log=print):
                 "ON DUPLICATE KEY UPDATE name = VALUES(name)", [maxmeta] + games)
             c.execute("DELETE FROM hm_ingest_meta WHERE id <= %s", [maxmeta])
             conn.commit()
+        enforce_caps(c, conn, log)
     return good_all

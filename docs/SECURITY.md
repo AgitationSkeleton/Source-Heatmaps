@@ -26,6 +26,12 @@ Source Heatmaps is meant to be exposed publicly while staying read-only. The onl
   - Header rules match case-insensitively (Windows paths are case-insensitive).
   - Rotated logs, 5 × 50 MB each.
   - Loopback-only listener. Publish it through a reverse proxy or tunnel; don't port-forward it.
+- **Disk use:** everything the system writes is bounded.
+  - Database aggregates: at most 300k cells and 100k movement edges per map (the weakest rows go first), plus a global budget of 20M rows. Over budget, single-sample rows are pruned.
+  - Site data: per-map export caps, and only maps that exist on disk.
+  - Staging: emptied every run.
+  - Logs: web logs 5 × 50 MB each; pipeline log rotates at 5 MB, 3 kept.
+  - Drop folders: at most 5,000 pending files.
 - **Staging floods:** compaction runs in 200k-row chunks. Rows for maps without a map file are discarded. Exports cap cells at 400k per map and edges at 60k. Run one ingest account per server group if you want to be able to cut off a single source.
 - **Hostile map files:**
   - LZMA lumps are decompressed with `max_length` and a 256 MB cap.
