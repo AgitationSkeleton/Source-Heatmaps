@@ -96,7 +96,7 @@ Admin commands (RCON flag):
    - **`secrets`**: the file from step 1.
    - **`site_src` / `site_dir`**: the `site/` folder and the folder your web server serves.
    - **`games`**: one entry per game key the plugin sends. List the install folders (the game folder that holds `maps/`) in `content` so the exporter can find BSP and NAV files. Add `team_colors` to pin team colours by index.
-   - **`icons`**: where to read the class icons from your own game files (VTF loose files or inside VPKs). The site shows text-only chips for classes without an icon. Zombie is generated from Juggernaut, or from Sniper if Juggernaut is missing.
+   - **`icons`** (optional; ready-made icons ship in `site/icons/`): where to read the class icons from your own game files (VTF loose files or inside VPKs). The site shows text-only chips for classes without an icon. Zombie is generated from Juggernaut, or from Sniper if Juggernaut is missing.
 2. Build the icons once with `python -I pipeline/run.py icons`.
 3. Schedule `python -I pipeline/run.py all` every 5 to 15 minutes (cron or Task Scheduler). It lowers its own priority, runs one instance at a time, rebuilds only maps that changed, and caches map geometry until the BSP changes.
 
@@ -129,4 +129,4 @@ The data format has no engine-specific fields, and map loaders are registered pe
 
 ## Licence
 
-GPL-3.0-or-later. three.js (`site/vendor/`) is MIT; its licence is in `site/vendor/three.LICENSE`. Class icons and map geometry are produced from your own game files and are not included in this repository.
+GPL-3.0-or-later. three.js (`site/vendor/`) is MIT; its licence is in `site/vendor/three.LICENSE`. The class icons in `site/icons/` are game assets from TF2, TF2 Classified, Open Fortress and Pre-Fortress 2, included for convenience and not covered by the GPL (see `site/icons/NOTICE.md`). Map geometry is produced from your own game files and is not included.

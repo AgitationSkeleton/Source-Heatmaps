@@ -53,6 +53,18 @@ def sync_static(cfg, log):
         shutil.copyfile(s, d + ".tmp")
         os.replace(d + ".tmp", d)
         n += 1
+    # bundled class icons: copied only where site_dir has none (icons built by `run.py icons` win)
+    isrc = os.path.join(src, "icons")
+    for root, _, files in os.walk(isrc):
+        for f in files:
+            if not f.endswith(".png"):
+                continue
+            s = os.path.join(root, f)
+            d = os.path.join(dst, "icons", os.path.relpath(s, isrc))
+            if not os.path.exists(d):
+                os.makedirs(os.path.dirname(d), exist_ok=True)
+                shutil.copyfile(s, d)
+                n += 1
     if n:
         log("site: %d static file(s) updated" % n)
 
