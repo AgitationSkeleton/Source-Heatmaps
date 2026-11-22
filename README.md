@@ -21,7 +21,7 @@ Collects where players and bots go on Source and GoldSrc servers, by team and cl
 
   The site has no server-side code and nothing on it accepts writes.
 
-Tested with Team Fortress 2, Team Fortress 2 Classified, Open Fortress, Pre-Fortress 2, Fortress Forever, TF2 Gold Rush, Counter-Strike: Source and Half-Life 2: Deathmatch (SourceMod), and with Team Fortress Classic, Half-Life Deathmatch, Deathmatch Classic and Ricochet (AMX Mod X).
+Tested with Team Fortress 2, Team Fortress 2 Classified, Open Fortress, Pre-Fortress 2, Fortress Forever, TF2 Gold Rush, Counter-Strike: Source and Half-Life 2: Deathmatch (SourceMod), with Team Fortress Classic, Half-Life Deathmatch, Deathmatch Classic and Ricochet (AMX Mod X), and with QuakeWorld and QuakeWorld Team Fortress (FTEQW, via drop files; BSP29/BSP2 maps, loose or in .pak files, and fteqw-sv `.qnav` nav meshes).
 
 ```
 game servers --INSERT only--> MySQL staging --exporter (validate, fold)--> aggregates
@@ -117,6 +117,7 @@ Other cvars: `amx_heatmap_enable`, `amx_heatmap_interval` (1.0), `amx_heatmap_fl
    - **`secrets`**: the file from step 1.
    - **`site_src` / `site_dir`**: the `site/` folder and the folder your web server serves.
    - **`games`**: one entry per game key the plugin sends. List the install folders (the game folder that holds `maps/`) in `content` so the exporter can find BSP and NAV files. Add `team_colors` to pin team colours by index.
+   - **`drop_dirs`**, **`class_map`** (optional, per game): folders where engines without database access write `*.hm` drop files (see docs/EXTENDING.md); used for QuakeWorld.
    - **`waypoints`** (optional, per game): GoldSrc bot waypoint graphs to show and analyse, e.g. `[{"format": "jkbotti", "dir": ".../addons/jk_botti/waypoints"}]`. Formats: `jkbotti`, `parabot`, `foxbot` (see docs/DATA_FORMAT.md).
    - **`icons`** (optional; ready-made icons ship in `site/icons/`): where to read the class icons from your own game files (VTF loose files or inside VPKs). The site shows text-only chips for classes without an icon. Zombie is generated from Juggernaut, or from Sniper if Juggernaut is missing.
 2. Build the icons once with `python -I pipeline/run.py icons`.

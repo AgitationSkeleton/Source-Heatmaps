@@ -20,8 +20,10 @@ def load(path):
     if os.path.getsize(path) > MAX_FILE:
         raise ValueError("map file too large")
     data = open(path, "rb").read()
-    version, = struct.unpack_from("<i", data, 0)
-    if version not in (29, 30):
+    # BSP2 (Quake 1 with 32-bit faces/edges for large maps) uses the BSP29 lump order
+    bsp2 = data[:4] == b"BSP2"
+    version = 2 if bsp2 else struct.unpack_from("<i", data, 0)[0]
+    if not bsp2 and version not in (29, 30):
         raise ValueError("not a GoldSrc/Quake BSP (version %d)" % version)
     lumps = [struct.unpack_from("<ii", data, 4 + i * 8) for i in range(15)]
 
@@ -33,11 +35,12 @@ def load(path):
 
     ents = parse_entities(lump(L_ENTITIES).decode("latin-1", "replace"))
     verts = np.frombuffer(lump(L_VERTICES), dtype="<f4").reshape(-1, 3)
-    edges = np.frombuffer(lump(L_EDGES), dtype="<u2").reshape(-1, 2)
+    edges = np.frombuffer(lump(L_EDGES), dtype="<u4" if bsp2 else "<u2").reshape(-1, 2)
     surfedges = np.frombuffer(lump(L_SURFEDGES), dtype="<i4")
     planes = np.frombuffer(lump(L_PLANES), dtype="<f4").reshape(-1, 5)
     faces_raw = lump(L_FACES)
-    nfaces = len(faces_raw) // 20
+    face_size, face_fmt = (28, "<iiiii") if bsp2 else (20, "<HHiHH")   # BSP2: all 32-bit fields
+    nfaces = len(faces_raw) // face_size
     if nfaces > MAX_FACES:
         raise ValueError("too many faces")
     texinfo = lump(L_TEXINFO)
@@ -92,8 +95,8 @@ def load(path):
             continue
         first, num = struct.unpack_from("<ii", models, mi * msize + 56)
         for fi in range(max(0, first), min(first + num, nfaces)):
-            fo = fi * 20
-            pn, side, firstedge, numedges, ti = struct.unpack_from("<HHiHH", faces_raw, fo)
+            fo = fi * face_size
+            pn, side, firstedge, numedges, ti = struct.unpack_from(face_fmt, faces_raw, fo)
             if numedges < 3 or numedges > 512 or firstedge < 0 or firstedge + numedges > len(surfedges) or not face_ok(ti):
                 continue
             se = surfedges[firstedge:firstedge + numedges]
@@ -105,7 +108,7 @@ def load(path):
             pts = verts[idx]
             if mi:
                 pts = pts + np.array(origin, dtype=np.float32)
-            nrm = planes[pn][:3].astype(np.float64) if pn < len(planes) else np.zeros(3)
+            nrm = planes[pn][:3].astype(np.float64) if 0 <= pn < len(planes) else np.zeros(3)
             if side:
                 nrm = -nrm
             if np.dot(np.cross(pts[1] - pts[0], pts[2] - pts[0]), nrm) < 0:

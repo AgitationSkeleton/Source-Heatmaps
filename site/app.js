@@ -471,7 +471,7 @@ function navCorners(a) {
 const SRC_RE = /^[a-z0-9_]{1,24}$/;
 function setupNavSources() {
   S.navSources = [];
-  if (S.nav) S.navSources.push({ key: 'nav', label: 'Nav mesh (.nav)' });
+  if (S.nav) S.navSources.push({ key: 'nav', label: S.meta.navFormat === '.qnav' ? 'NextBot nav mesh (.qnav)' : 'Nav mesh (.nav)' });
   for (const w of (S.meta.has && S.meta.has.waypoints) || []) {
     if (w && SRC_RE.test(w.key)) S.navSources.push({ key: w.key, label: String(w.label || w.key).slice(0, 40) });
   }

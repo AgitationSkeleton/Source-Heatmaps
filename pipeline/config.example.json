@@ -130,6 +130,36 @@
           "dir": "/srv/hlds/valve/addons/parabot/navpoints"
         }
       ]
+    },
+    "fortress": {
+      "name": "QuakeWorld Team Fortress",
+      "engine": "quake",
+      "content": [
+        "/srv/fte/fortress",
+        "/srv/fte/id1"
+      ],
+      "team_colors": {
+        "1": "blue",
+        "2": "red",
+        "3": "yellow",
+        "4": "green"
+      },
+      "class_map": {
+        "1": 1,
+        "2": 8,
+        "3": 2,
+        "4": 4,
+        "5": 7,
+        "6": 5,
+        "7": 3,
+        "8": 9,
+        "9": 6,
+        "10": 0,
+        "11": 10
+      },
+      "drop_dirs": [
+        "/srv/fte/fortress/heatmap"
+      ]
     }
   },
   "icons": {

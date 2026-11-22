@@ -114,6 +114,17 @@ Present when the map has a nav mesh. Only human data is used, because bots only 
 
 Both lists are heuristics: rocket jumps, teleporters and knockback show up too. Weigh them by count, and check them against the brushwork in the viewer.
 
+## QuakeWorld nav meshes (`.qnav`)
+
+fteqw-sv's NextBot-style bots generate `<gamedir>/nav/<map>.qnav` meshes. The exporter converts them into the same
+`nav.json` shape as Source `.nav` files, so the nav overlays and the gap and missing-link analysis are
+the same, and `meta.navFormat` is `.qnav`.
+
+The file is version 8:
+- **Header**, 52 bytes: magic `QNAV`, version, BSP checksum, area count, link count, gamedir.
+- **Areas**, 52 bytes each: mins, maxs, four floor heights (min-x/min-y, max-x/min-y, max-x/max-y, min-x/max-y), flags, first link, link count, team block.
+- **Links**, 8 bytes each: target area, link type, extra cost.
+
 ## Bot waypoints: `waypoints_<format>.json` and `analysis_<format>.json`
 
 These are for maps whose bots use waypoint graphs instead of (or as well as) a `.nav`. `meta.json` lists the

@@ -1,4 +1,5 @@
 """Shared definitions: canonical classes, team colours, config and name validation."""
+import hashlib
 import json
 import os
 import re
@@ -57,11 +58,22 @@ def load_secrets(cfg):
     return json.load(open(cfg["secrets"], encoding="utf-8"))
 
 
-def find_map_files(game_cfg, mapname, loader=None):
-    """(map, nav) paths for a map from the game's content directories (first hit wins)."""
-    map_ext = (loader or {}).get("map_ext", ".bsp")
-    nav_ext = (loader or {}).get("nav_ext", ".nav")
+def find_map_files(game_cfg, mapname, loader=None, cache_dir=None):
+    """(map, nav) paths for a map from the game's content directories (first hit wins).
+
+    Engines with "paks" also look inside Quake .pak files: the map is extracted to cache_dir when
+    one is given (the parser needs a file), otherwise a "pak:" marker is returned (existence only).
+    Engines with "nav_subdir" read the nav file from <content dir>/<nav_subdir>/ as well."""
+    loader = loader or {}
+    map_ext = loader.get("map_ext", ".bsp")
+    nav_ext = loader.get("nav_ext", ".nav")
     bsp = nav = None
+    if loader.get("nav_subdir"):
+        for d in game_cfg.get("content", []):
+            p = os.path.join(d, loader["nav_subdir"], mapname + nav_ext)
+            if os.path.isfile(p):
+                nav = p
+                break
     for d in game_cfg.get("content", []):
         dirs = [os.path.join(d, "maps"), os.path.join(d, "download", "maps")]
         custom = os.path.join(d, "custom")
@@ -73,5 +85,19 @@ def find_map_files(game_cfg, mapname, loader=None):
             if nav is None and nav_ext and os.path.isfile(os.path.join(md, mapname + nav_ext)):
                 nav = os.path.join(md, mapname + nav_ext)
         if bsp and nav:
+            break
+    if bsp is None and loader.get("paks"):
+        from .geo import pak
+        for d in game_cfg.get("content", []):
+            hit = pak.find(d, "maps/%s%s" % (mapname, map_ext))
+            if not hit:
+                continue
+            if not cache_dir:
+                bsp = "pak:" + hit[0]
+            else:
+                dst = os.path.join(cache_dir, "pakmaps", hashlib.sha1(hit[0].lower().encode()).hexdigest()[:10], mapname + map_ext)
+                if not os.path.isfile(dst) or os.path.getmtime(dst) < os.path.getmtime(hit[0]):
+                    pak.extract(hit, dst)
+                bsp = dst
             break
     return bsp, nav

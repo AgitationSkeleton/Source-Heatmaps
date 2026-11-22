@@ -142,10 +142,11 @@ def main():
             from hm import icons
             icons.build(cfg, log)
             return
-        from hm import compact, export
+        from hm import collect, compact, export
         conn = compact.connect(cfg)
         try:
             if a.cmd in ("all", "compact"):
+                collect.collect(cfg, conn, log)        # engines that write drop files (fteqw-sv)
                 compact.compact(cfg, conn, log)
             if a.cmd in ("all", "export"):
                 export.export(cfg, conn, full=a.full, log=log)

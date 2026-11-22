@@ -39,6 +39,23 @@ Team names go to `hm_ingest_meta` with `kind=1`, `k` = team index and `v` = name
   - Have a tiny sidecar insert it with `hm_ingest`.
   - Keep the sidecar on the server machine, and give it only that account.
 
+### Engines without database access: drop files
+
+An engine can write plain-text drop files instead of talking to MySQL. List the folder in the game's
+`drop_dirs`; on each run the exporter reads every `*.hm` file there, validates it, stages the rows
+and deletes the file. This is how QuakeWorld (fteqw-sv) feeds the site.
+
+```
+HM1 game=<game key> map=<map> port=<port>
+T <team index> <team name>                       (optional, one per team)
+<kind> <team> <class> <bot> <x> <y> <z> <x2> <y2> <z2> <count>
+```
+
+- Columns mean the same as the staging table above (cells `floor(world/32)`, edges `floor(world/64)`).
+- `game` must equal the config key, or the game's `drop_game`.
+- A game's `class_map` turns raw class numbers into canonical ids. For example, QuakeWorld TF `playerclass` maps 6 (HWGuy) to heavy and 11 to civilian.
+- Write each file atomically: write `.tmp`, then rename.
+
 ## 2. A map loader
 
 Add a module under `pipeline/hm/geo/` and register it in `pipeline/hm/geo/__init__.py`:

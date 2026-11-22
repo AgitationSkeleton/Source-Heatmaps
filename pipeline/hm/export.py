@@ -352,7 +352,7 @@ def export_map(cfg, conn, game, mapname, teams, log):
     _atomic_write(os.path.join(out_dir, "edges.bin"), _edges_bin(edges))
 
     loader = LOADERS.get(gcfg.get("engine", "source"))
-    bsp, navf = find_map_files(gcfg, mapname, loader) if loader else (None, None)
+    bsp, navf = find_map_files(gcfg, mapname, loader, cfg["cache_dir"]) if loader else (None, None)
     if not bsp:
         return None                    # no map file on disk: not a real map of this game
     bounds = None
@@ -401,6 +401,7 @@ def export_map(cfg, conn, game, mapname, teams, log):
                                         "color": team_color("", gcfg.get("team_colors", {}).get(str(t)))}) for t in present_team},
         "classes": [CLASS_KEYS[c] for c in present_cls if c in CLASS_KEYS],
         "bounds": bounds,
+        "navFormat": (loader or {}).get("nav_ext") or ".nav",
         "has": {"geo": bool(bounds), "nav": bool(nav), "analysis": has_analysis, "waypoints": wpts},
     }
     _atomic_write(os.path.join(out_dir, "meta.json"), _json(meta))
