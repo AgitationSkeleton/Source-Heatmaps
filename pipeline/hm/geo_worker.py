@@ -70,7 +70,7 @@ def main():
             f.write(I.astype("<u2" if isz == 2 else "<u4").tobytes())
         os.replace(tmp, dst)
         bounds = [V.min(0).round().tolist(), V.max(0).round().tolist()] if len(V) else None
-        print(json.dumps({"bounds": bounds, "tris": int(len(I))}))
+        print(json.dumps({"bounds": bounds, "tris": int(len(I))}, allow_nan=False))
     else:
         n = loader["nav"](src)
         areas = n["areas"]
@@ -82,7 +82,7 @@ def main():
             "conn": [sorted(set(a["conn"])) for a in areas],
         }
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(out, f, separators=(",", ":"))
+            json.dump(out, f, separators=(",", ":"), allow_nan=False)
         os.replace(tmp, dst)
         print(json.dumps({"areas": len(areas)}))
 

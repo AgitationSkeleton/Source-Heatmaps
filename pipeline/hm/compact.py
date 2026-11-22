@@ -13,6 +13,7 @@ from .common import find_map_files, load_secrets, valid_map
 from .geo import LOADERS
 
 CHUNK = 200_000
+MAX_ROWS_PER_RUN = 3_000_000     # a flood is folded over several runs instead of one huge one
 
 # cells are 32 units, edges 64; Source maps are within +-16384 (+-32768 for extended-bounds mods).
 # BINARY makes the name check case-sensitive; LOCATE/LIKE reject a trailing newline or dot.
@@ -73,16 +74,17 @@ def _fold_chunk(c, conn, lo, hi, games, valid, check, log, held):
     # drop rows for maps that don't exist in the game's content (fake or mistyped map names)
     c.execute("SELECT DISTINCT game, map FROM hm_ingest WHERE id > %s AND id <= %s", rng)
     bad_maps = [(g, m) for g, m in c.fetchall() if g not in held and not check.ok(g, m)]
-    if len(bad_maps) > 5000:
-        log("compact: more than 5000 unknown maps in one chunk; discarding the whole chunk")
-        dropped = c.execute("DELETE FROM hm_ingest WHERE id > %s AND id <= %s" + hold, rng + held)
-        conn.commit()
-        return 0, dropped
     if bad_maps:
         log("compact: %d unknown map(s), e.g. %s" % (len(bad_maps), ", ".join("%s/%s" % gm for gm in bad_maps[:5])))
     dropped = 0
+    by_game = {}
     for g, m in bad_maps:
-        dropped += c.execute("DELETE FROM hm_ingest WHERE id > %s AND id <= %s AND game = %s AND map = %s", rng + [g, m])
+        by_game.setdefault(g, []).append(m)
+    for g, maps in by_game.items():          # only the unknown maps go, in batches; real rows stay
+        for i in range(0, len(maps), 500):
+            part = maps[i:i + 500]
+            dropped += c.execute("DELETE FROM hm_ingest WHERE id > %s AND id <= %s AND game = %s AND map IN (" +
+                                 ",".join(["%s"] * len(part)) + ")", rng + [g] + part)
     c.execute("SELECT COUNT(*) FROM hm_ingest WHERE id > %s AND id <= %s AND " + valid, rng + games)
     good, = c.fetchone()
     c.execute("SELECT COUNT(*) FROM hm_ingest WHERE id > %s AND id <= %s" + hold, rng + held)
@@ -123,14 +125,18 @@ def compact(cfg, conn, log=print):
     with conn.cursor() as c:
         c.execute("SELECT COALESCE(MIN(id),1)-1, COALESCE(MAX(id),0) FROM hm_ingest")
         lo, maxid = c.fetchone()
-        while lo < maxid:
+        done = 0
+        while lo < maxid and done < MAX_ROWS_PER_RUN:
             c.execute("SELECT id FROM hm_ingest WHERE id > %s ORDER BY id LIMIT 1 OFFSET %s", (lo, CHUNK - 1))
             r = c.fetchone()
             hi = min(maxid, r[0]) if r else maxid
             good, bad = _fold_chunk(c, conn, lo, hi, games, valid, check, log, held)
             good_all += good
             bad_all += bad
+            done += good + bad
             lo = hi
+        if lo < maxid:
+            log("compact: run limit reached; the rest of staging is folded next run")
         if bad_all:
             log("compact: discarded %d invalid staging row(s)" % bad_all)
         if good_all:

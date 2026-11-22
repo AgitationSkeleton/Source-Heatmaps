@@ -65,9 +65,12 @@ def parse_entities(text):
 def _vec(s):
     try:
         v = [float(x) for x in s.split()[:3]]
-        return v if len(v) == 3 else [0.0, 0.0, 0.0]
     except ValueError:
         return [0.0, 0.0, 0.0]
+    # reject nan/inf and absurd values (a hostile entity lump could carry them)
+    if len(v) != 3 or not all(-1e6 < x < 1e6 for x in v):
+        return [0.0, 0.0, 0.0]
+    return v
 
 
 def load(path, disp_step=None):
@@ -244,6 +247,12 @@ def load(path, disp_step=None):
     else:
         V = np.zeros((0, 3), np.float32)
         I = np.zeros((0, 3), np.uint32)
+    # drop triangles that touch non-finite or out-of-range vertices
+    if len(V):
+        bad = ~np.all(np.isfinite(V) & (np.abs(V) < 65536), axis=1)
+        if bad.any():
+            I = I[~np.any(bad[I], axis=1)]
+            V = np.where(bad[:, None], 0.0, V).astype(np.float32)
     V, I = _weld(V, I)
     return {"vertices": V, "indices": I, "entities": ents, "version": b.version}
 

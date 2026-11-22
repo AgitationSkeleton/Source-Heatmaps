@@ -134,7 +134,10 @@ def main():
         logf.flush()
 
     with Lock(os.path.join(cfg["cache_dir"], "pipeline.lock")):
-        sync_static(cfg, log)
+        # production sets "sync_static": false: the exporter account can't (and shouldn't) write the
+        # page code; the admin publish step copies it instead
+        if cfg.get("sync_static", True):
+            sync_static(cfg, log)
         if a.cmd == "icons":
             from hm import icons
             icons.build(cfg, log)

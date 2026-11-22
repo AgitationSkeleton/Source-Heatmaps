@@ -83,7 +83,7 @@ def _areas(b, start, ver, occupy, custom, limit=None):
         nez = r.f32()
         swz = r.f32()
         for v in nw + se + (nez, swz):
-            if not (-40000.0 < v < 40000.0) or v != v:
+            if not (-40000.0 < v < 40000.0):   # also false for nan/inf
                 raise ValueError("bad coordinate")
         conns = []
         for d in range(4):

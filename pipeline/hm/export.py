@@ -37,7 +37,7 @@ def _atomic_write(path, data):
 
 
 def _json(obj):
-    return json.dumps(obj, separators=(",", ":"), ensure_ascii=True)
+    return json.dumps(obj, separators=(",", ":"), ensure_ascii=True, allow_nan=False)
 
 
 # ---------------------------------------------------------------- geometry / nav (cached)
