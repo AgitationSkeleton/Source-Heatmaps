@@ -1,0 +1,175 @@
+{
+  "secrets": "../secrets/db.json",
+  "site_src": "../site",
+  "site_dir": "/var/www/heatmaps",
+  "cache_dir": "../cache",
+  "log_dir": "../logs",
+  "edge_limit": 60000,
+  "games": {
+    "tf": {
+      "name": "Team Fortress 2",
+      "engine": "source",
+      "content": [
+        "/srv/tf2/tf"
+      ],
+      "team_colors": {
+        "2": "red",
+        "3": "blue"
+      }
+    },
+    "tf2classified": {
+      "name": "Team Fortress 2 Classified",
+      "engine": "source",
+      "content": [
+        "/srv/tf2c/tf2classified"
+      ],
+      "team_colors": {
+        "2": "red",
+        "3": "blue",
+        "4": "green",
+        "5": "yellow"
+      }
+    },
+    "open_fortress": {
+      "name": "Open Fortress",
+      "engine": "source",
+      "content": [
+        "/srv/sdk2013/open_fortress"
+      ],
+      "team_colors": {
+        "2": "red",
+        "3": "blue",
+        "4": "purple"
+      }
+    },
+    "pf2": {
+      "name": "Pre-Fortress 2",
+      "engine": "source",
+      "content": [
+        "/srv/sdk2013/pf2"
+      ],
+      "icons": {
+        "civilian": "pf2/civilian.png"
+      },
+      "team_colors": {
+        "2": "red",
+        "3": "blue"
+      }
+    },
+    "fortressforever": {
+      "name": "Fortress Forever",
+      "engine": "source",
+      "content": [
+        "/srv/ff/fortressforever"
+      ],
+      "team_colors": {
+        "2": "blue",
+        "3": "red",
+        "4": "yellow",
+        "5": "green"
+      }
+    },
+    "cstrike": {
+      "name": "Counter-Strike: Source",
+      "engine": "source",
+      "content": [
+        "/srv/css/cstrike"
+      ],
+      "team_colors": {
+        "2": "red",
+        "3": "blue"
+      }
+    },
+    "hl2mp": {
+      "name": "Half-Life 2: Deathmatch",
+      "engine": "source",
+      "content": [
+        "/srv/hl2dm/hl2mp"
+      ],
+      "team_colors": {
+        "0": "purple",
+        "2": "blue",
+        "3": "red"
+      }
+    }
+  },
+  "icons": {
+    "_comment": "Point these at your own installs. VTF files loose ({'file': ...}) or inside a VPK ({'vpk': '..._dir.vpk', 'path': 'materials/hud/...'}). The nine TF2 classes need TF2's texture VPK data or any mod that ships loose copies.",
+    "scout": [
+      {
+        "vpk": "/path/to/tf/tf2_textures_dir.vpk",
+        "path": "materials/hud/leaderboard_class_scout.vtf"
+      }
+    ],
+    "soldier": [
+      {
+        "vpk": "/path/to/tf/tf2_textures_dir.vpk",
+        "path": "materials/hud/leaderboard_class_soldier.vtf"
+      }
+    ],
+    "pyro": [
+      {
+        "vpk": "/path/to/tf/tf2_textures_dir.vpk",
+        "path": "materials/hud/leaderboard_class_pyro.vtf"
+      }
+    ],
+    "demoman": [
+      {
+        "vpk": "/path/to/tf/tf2_textures_dir.vpk",
+        "path": "materials/hud/leaderboard_class_demo.vtf"
+      }
+    ],
+    "heavy": [
+      {
+        "vpk": "/path/to/tf/tf2_textures_dir.vpk",
+        "path": "materials/hud/leaderboard_class_heavy.vtf"
+      }
+    ],
+    "engineer": [
+      {
+        "vpk": "/path/to/tf/tf2_textures_dir.vpk",
+        "path": "materials/hud/leaderboard_class_engineer.vtf"
+      }
+    ],
+    "medic": [
+      {
+        "vpk": "/path/to/tf/tf2_textures_dir.vpk",
+        "path": "materials/hud/leaderboard_class_medic.vtf"
+      }
+    ],
+    "sniper": [
+      {
+        "vpk": "/path/to/tf/tf2_textures_dir.vpk",
+        "path": "materials/hud/leaderboard_class_sniper.vtf"
+      }
+    ],
+    "spy": [
+      {
+        "vpk": "/path/to/tf/tf2_textures_dir.vpk",
+        "path": "materials/hud/leaderboard_class_spy.vtf"
+      }
+    ],
+    "civilian": [
+      {
+        "vpk": "/srv/tf2c/tf2classified/vpks/tf2c_assets_dir.vpk",
+        "path": "materials/hud/leaderboard_class_civilian.vtf"
+      }
+    ],
+    "mercenary": [
+      {
+        "file": "/srv/sdk2013/open_fortress/materials/hud/leaderboard_class_merc.vtf"
+      }
+    ],
+    "juggernaut": [
+      {
+        "file": "/srv/sdk2013/open_fortress/materials/hud/leaderboard_class_juggernaut.vtf"
+      }
+    ],
+    "pf2/civilian": [
+      {
+        "vpk": "/srv/sdk2013/pf2/pf2_textures_dir.vpk",
+        "path": "materials/hud/leaderboard_class_civilian.vtf"
+      }
+    ]
+  }
+}

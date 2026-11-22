@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="referrer" content="no-referrer">
+<title>Source Heatmaps</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="icons/mercenary.png">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header id="bar">
+  <button id="menuBtn" type="button" aria-controls="panel" aria-expanded="false" title="Filters">&#9776;</button>
+  <h1>Source Heatmaps</h1>
+  <label class="sel"><span class="vh">Game</span><select id="gameSel" aria-label="Game"></select></label>
+  <label class="sel grow"><span class="vh">Map</span><select id="mapSel" aria-label="Map"></select></label>
+</header>
+
+<main id="view">
+  <canvas id="gl" aria-label="3D map view"></canvas>
+  <div id="status" role="status"></div>
+  <div id="info" hidden></div>
+  <div id="legend" hidden><span id="legMin">0</span><i id="legBar"></i><span id="legMax">0</span></div>
+  <div id="camBtns">
+    <button type="button" id="topBtn" title="Top-down view">Top</button>
+    <button type="button" id="persBtn" title="Angled view">3D</button>
+  </div>
+</main>
+
+<aside id="panel" aria-label="Filters">
+  <section>
+    <h2>Layer</h2>
+    <div class="seg" id="layerSeg">
+      <button type="button" data-layer="presence" class="on">Presence</button>
+      <button type="button" data-layer="deaths">Deaths</button>
+      <button type="button" data-layer="air">Airborne</button>
+    </div>
+    <label class="row"><input type="checkbox" id="incAir"> Include airborne in presence</label>
+    <div class="seg" id="colorSeg">
+      <button type="button" data-color="heat" class="on">Heat colours</button>
+      <button type="button" data-color="team">Team colours</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Players</h2>
+    <label class="row"><input type="checkbox" id="showHumans" checked> Humans</label>
+    <label class="row"><input type="checkbox" id="showBots" checked> Bots</label>
+  </section>
+
+  <section>
+    <h2>Teams <button type="button" class="mini" id="teamsAll">all</button></h2>
+    <div id="teamChips" class="chips"></div>
+  </section>
+
+  <section>
+    <h2>Classes <button type="button" class="mini" id="classesAll">all</button></h2>
+    <div id="classChips" class="chips icons"></div>
+  </section>
+
+  <section>
+    <h2>Movement lines</h2>
+    <div id="lineChips" class="chips"></div>
+    <label class="row slider">Min. moves <input type="range" id="lineMin" min="1" max="200" value="3"><output id="lineMinOut">3</output></label>
+  </section>
+
+  <section>
+    <h2>Nav mesh</h2>
+    <label class="row"><input type="checkbox" id="showNav"> Nav areas</label>
+    <label class="row"><input type="checkbox" id="showNavLinks"> Area connections</label>
+    <label class="row"><input type="checkbox" id="showGaps"> Nav gaps (human ground, no area)</label>
+    <label class="row"><input type="checkbox" id="showMissing"> Missing links (human moves, not connected)</label>
+    <p id="navNote" class="note"></p>
+  </section>
+
+  <section>
+    <h2>View</h2>
+    <label class="row"><input type="checkbox" id="showGeo" checked> Map brushwork</label>
+    <label class="row"><input type="checkbox" id="overWalls" checked> Draw heat over walls and roofs</label>
+    <label class="row slider">Height cut <input type="range" id="cut" min="0" max="1000" value="1000"><output id="cutOut">off</output></label>
+    <label class="row slider">Point size <input type="range" id="psize" min="30" max="250" value="100"><output id="psizeOut">100%</output></label>
+  </section>
+
+  <section>
+    <h2>Data</h2>
+    <p class="note" id="stats"></p>
+    <p class="links" id="dl"></p>
+  </section>
+</aside>
+</body>
+</html>
