@@ -1,4 +1,8 @@
-# Extending to other engines (GoldSrc, Quake / FTEQW)
+# Extending to other engines
+
+GoldSrc is supported: see `plugin/amxmodx/` for the collector and `pipeline/hm/geo/bsp_goldsrc.py`
+for the map loader (BSP v30; Quake v29 too). The sections below show how that was done, for
+adding another engine such as FTEQW / QuakeWorld.
 
 The storage and the website don't depend on the engine. To add an engine you need two things:
 

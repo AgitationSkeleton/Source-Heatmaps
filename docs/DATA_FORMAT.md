@@ -32,6 +32,9 @@ Special labelling done by the plugin:
 - **TF2C with tf2cc**: the tf2cc Merc model marks Mercenary; real Soldiers stay Soldier.
 - **TF2C DM/infection VScript bundle**: the Merc model or class Soldier marks Mercenary; the zombie model or class Sniper marks Zombie.
 - **Open Fortress**: raw 10 is Mercenary, 11 Civilian, 12 Juggernaut.
+- **Team Fortress Classic** (`pev_playerclass`): 1 scout, 2 sniper, 3 soldier, 4 demoman, 5 medic, 6 HWGuy (heavy), 7 pyro, 8 spy, 9 engineer, 11 civilian.
+
+Team indices on GoldSrc: TFC uses 1 blue, 2 red, 3 yellow, 4 green. HLDM, DMC and Ricochet are stored as team 0 unless `mp_teamplay` is on.
 
 ## `data/manifest.json`
 

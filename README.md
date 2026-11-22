@@ -1,6 +1,6 @@
 # Source Heatmaps
 
-Collects where players and bots go on Source engine servers, by team and class, and shows it as heatmaps on the map's own brushwork in a static, read-only website. The data is also published in simple formats for nav mesh and bot work: nav gaps and missing nav links found from human movement.
+Collects where players and bots go on Source and GoldSrc servers, by team and class, and shows it as heatmaps on the map's own brushwork in a static, read-only website. The data is also published in simple formats for nav mesh and bot work: nav gaps and missing nav links found from human movement.
 
 - **SourceMod plugin** (SM 1.11+, no extensions):
   - Samples every living player and bot once a second and records deaths and movement between samples.
@@ -21,7 +21,7 @@ Collects where players and bots go on Source engine servers, by team and class, 
 
   The site has no server-side code and nothing on it accepts writes.
 
-Tested with Team Fortress 2, Team Fortress 2 Classified, Open Fortress, Pre-Fortress 2, Fortress Forever, TF2 Gold Rush, Counter-Strike: Source and Half-Life 2: Deathmatch.
+Tested with Team Fortress 2, Team Fortress 2 Classified, Open Fortress, Pre-Fortress 2, Fortress Forever, TF2 Gold Rush, Counter-Strike: Source and Half-Life 2: Deathmatch (SourceMod), and with Team Fortress Classic, Half-Life Deathmatch, Deathmatch Classic and Ricochet (AMX Mod X).
 
 ```
 game servers --INSERT only--> MySQL staging --exporter (validate, fold)--> aggregates
@@ -89,6 +89,27 @@ Cvars (written to `cfg/sourcemod/source_heatmaps.cfg`):
 Admin commands (RCON flag):
 - `sm_heatmap_status` shows the connection state and how each player is labelled: team, raw class and canonical class.
 - `sm_heatmap_flushnow` flushes the buffer immediately.
+
+### 2b. GoldSrc servers (AMX Mod X)
+
+1. Copy `plugin/plugins_amxx/source_heatmaps.amxx` to `addons/amxmodx/plugins/`. Build it yourself from `plugin/amxmodx/source_heatmaps.sma` with `amxxpc` if you prefer; the plugin targets AMX Mod X 1.8.2+.
+2. Add `source_heatmaps.amxx` to `addons/amxmodx/configs/plugins.ini`.
+3. Create `addons/amxmodx/configs/source_heatmaps.cfg`:
+
+   ```
+   amx_heatmap_sql_host "127.0.0.1"
+   amx_heatmap_sql_user "hm_ingest"
+   amx_heatmap_sql_pass "<hm_ingest password>"
+   amx_heatmap_sql_db   "heatmap"
+   ```
+4. The plugin starts at the next map change. Check it with `amx_heatmap_status` (RCON access).
+
+Other cvars: `amx_heatmap_enable`, `amx_heatmap_interval` (1.0), `amx_heatmap_flush` (60), `amx_heatmap_bots` (1), `amx_heatmap_game` (empty means the mod folder, e.g. `tfc`, `valve`), `amx_heatmap_maxbuckets` (20000).
+
+- Positions are the player's feet (origin plus hull mins), the same as on Source.
+- TFC classes map to the same class ids (HWGuy is heavy, civilian is civilian).
+- HLDM, DMC and Ricochet without `mp_teamplay` are stored as free-for-all (team 0).
+- In the exporter's `config.json`, give these games `"engine": "goldsrc"`. GoldSrc has no nav meshes, so the nav and analysis layers are hidden for them.
 
 ### 3. Exporter
 

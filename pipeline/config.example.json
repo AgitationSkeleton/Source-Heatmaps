@@ -91,6 +91,29 @@
         "2": "blue",
         "3": "red"
       }
+    },
+    "tfc": {
+      "name": "Team Fortress Classic",
+      "engine": "goldsrc",
+      "content": [
+        "/srv/hlds/tfc"
+      ],
+      "team_colors": {
+        "1": "blue",
+        "2": "red",
+        "3": "yellow",
+        "4": "green"
+      }
+    },
+    "valve": {
+      "name": "Half-Life Deathmatch",
+      "engine": "goldsrc",
+      "content": [
+        "/srv/hlds/valve"
+      ],
+      "team_colors": {
+        "0": "purple"
+      }
     }
   },
   "icons": {

@@ -8,8 +8,10 @@
 To add an engine (e.g. GoldSrc BSP v30, Quake/FTE BSP29/BSP2), write a module with those two
 functions and register it here; the exporter, the site and the data formats stay the same.
 """
-from . import bsp_source, nav_source
+from . import bsp_goldsrc, bsp_source, nav_source
 
 LOADERS = {
     "source": {"map_ext": ".bsp", "nav_ext": ".nav", "geometry": bsp_source.load, "nav": nav_source.load},
+    # GoldSrc (BSP v30; Quake v29 too): no nav meshes
+    "goldsrc": {"map_ext": ".bsp", "nav_ext": None, "geometry": bsp_goldsrc.load, "nav": None},
 }
