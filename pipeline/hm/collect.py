@@ -6,8 +6,9 @@ A game's config may list "drop_dirs"; each *.hm file there is plain text:
     T <team index> <team name>                      (optional)
     <kind> <team> <class> <bot> <x> <y> <z> <x2> <y2> <z2> <count>
 
-with the same meaning as the SourceMod plugin's staging rows (cells are floor(world/32), edges
-floor(world/64)). The file's game must be the config key (or its "drop_game"); a game's
+with the same meaning as the SourceMod plugin's staging rows, except that positions are the CELL
+CENTRE in world units (cell * size + size / 2; 32-unit cells, 64 for edges): the collector turns
+them back into cell indices. Non-edge rows have x2 y2 z2 = 0. The file's game must be the config key (or its "drop_game"); a game's
 "class_map" turns raw classes (e.g. TF playerclass) into canonical ids. Rows go into hm_ingest
 like any server's, so compaction applies the usual validation; each file is deleted afterwards.
 Files are untrusted: sizes, counts and every value are checked.
@@ -54,6 +55,13 @@ def _parse(path, game_key, expect_game, class_map, log):
         kind, team, cls, bot, x, y, z, x2, y2, z2, n = (int(p) for p in parts)
         if kind not in (0, 1, 2, 3) or not 0 <= team < 16 or bot not in (0, 1) or not 1 <= n <= 1000000:
             raise ValueError("value out of range")
+        # world-unit cell centres -> cell indices (floor division also floors negatives)
+        size = 64 if kind == 2 else 32
+        x, y, z = x // size, y // size, z // size
+        if kind == 2:
+            x2, y2, z2 = x2 // size, y2 // size, z2 // size
+        else:
+            x2 = y2 = z2 = 0
         cls = int(class_map.get(str(cls), cls)) if class_map else cls
         if not 0 <= cls <= 13:
             cls = 0

@@ -420,6 +420,8 @@ def export(cfg, conn, full=False, log=print):
         ov = cfg["games"].get(g, {}).get("team_colors", {}).get(str(t))
         # some mods report localisation tokens (#FF_TEAM_BLUE): show the last word
         nice = name.lstrip("#").split("_")[-1].title() if name.startswith("#") else name
+        if nice.islower():
+            nice = nice.title()              # e.g. QW TF's "blue" -> "Blue"
         if int(t) == 0 and nice.lower() in ("unassigned", ""):
             nice = "Free-for-all"            # free-for-all modes keep everyone on team 0
         teams_by_game.setdefault(g, {})[int(t)] = {"name": nice, "color": team_color(nice, ov)}

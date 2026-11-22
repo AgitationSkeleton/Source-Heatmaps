@@ -51,7 +51,9 @@ T <team index> <team name>                       (optional, one per team)
 <kind> <team> <class> <bot> <x> <y> <z> <x2> <y2> <z2> <count>
 ```
 
-- Columns mean the same as the staging table above (cells `floor(world/32)`, edges `floor(world/64)`).
+- Columns mean the same as the staging table above, except that positions are the **cell centre in world
+  units** (`cell * size + size / 2`, with 32-unit cells and 64-unit cells for edges; non-edge rows have `0 0 0` in x2 y2 z2).
+  The collector converts them back to cell indices.
 - `game` must equal the config key, or the game's `drop_game`.
 - A game's `class_map` turns raw class numbers into canonical ids. For example, QuakeWorld TF `playerclass` maps 6 (HWGuy) to heavy and 11 to civilian.
 - Write each file atomically: write `.tmp`, then rename.
