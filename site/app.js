@@ -264,7 +264,9 @@ function buildChips() {
   const tc = $('teamChips'), cc = $('classChips'), lc = $('lineChips');
   tc.replaceChildren(); cc.replaceChildren(); lc.replaceChildren();
   for (const t of teamList()) {
-    tc.append(chip(t.name, { color: t.color, onToggle: (on) => { on ? S.teamsOff.delete(t.id) : S.teamsOff.add(t.id); rebuildHeat(); } }));
+    const tchip = chip(t.name, { color: t.color, onToggle: (on) => { on ? S.teamsOff.delete(t.id) : S.teamsOff.add(t.id); rebuildHeat(); } });
+    tchip.dataset.id = t.id;
+    tc.append(tchip);
     lc.append(chip(t.name, { color: t.color, off: true, onToggle: (on) => { on ? S.linesOn.add(t.id) : S.linesOn.delete(t.id); rebuildLines(); } }));
   }
   const g = S.manifest.games[S.game] || {};
@@ -272,7 +274,9 @@ function buildChips() {
   const all = (S.manifest.classes || []).filter((c) => present.has(c.key));
   for (const c of all) {
     const icon = (g.icons && g.icons[c.key]) || `${c.key}.png`;
-    cc.append(chip(c.label, { icon, onToggle: (on) => { on ? S.classesOff.delete(c.id) : S.classesOff.add(c.id); rebuildHeat(); rebuildLines(); } }));
+    const cchip = chip(c.label, { icon, onToggle: (on) => { on ? S.classesOff.delete(c.id) : S.classesOff.add(c.id); rebuildHeat(); rebuildLines(); } });
+    cchip.dataset.id = c.id;
+    cc.append(cchip);
   }
   $('classChips').closest('section').hidden = all.length === 0;
 
@@ -628,8 +632,19 @@ for (const b of $('colorSeg').querySelectorAll('button')) b.addEventListener('cl
 $('incAir').addEventListener('change', (e) => { S.incAir = e.target.checked; rebuildHeat(); });
 $('showHumans').addEventListener('change', (e) => { S.humans = e.target.checked; rebuildHeat(); rebuildLines(); });
 $('showBots').addEventListener('change', (e) => { S.bots = e.target.checked; rebuildHeat(); rebuildLines(); });
-$('teamsAll').addEventListener('click', () => { S.teamsOff.clear(); $('teamChips').querySelectorAll('.chip').forEach((c) => c.classList.remove('off')); rebuildHeat(); });
-$('classesAll').addEventListener('click', () => { S.classesOff.clear(); $('classChips').querySelectorAll('.chip').forEach((c) => c.classList.remove('off')); rebuildHeat(); rebuildLines(); });
+// "all": everything on -> everything off; otherwise -> everything on
+function toggleAll(container, offSet) {
+  const chips = [...$(container).querySelectorAll('.chip')];
+  const allOn = chips.every((c) => !c.classList.contains('off'));
+  offSet.clear();
+  for (const c of chips) {
+    c.classList.toggle('off', allOn);
+    c.setAttribute('aria-pressed', allOn ? 'false' : 'true');
+    if (allOn) offSet.add(Number(c.dataset.id));
+  }
+}
+$('teamsAll').addEventListener('click', () => { toggleAll('teamChips', S.teamsOff); rebuildHeat(); });
+$('classesAll').addEventListener('click', () => { toggleAll('classChips', S.classesOff); rebuildHeat(); rebuildLines(); });
 $('lineMin').addEventListener('input', (e) => { S.lineMin = Number(e.target.value); $('lineMinOut').textContent = e.target.value; });
 $('lineMin').addEventListener('change', () => rebuildLines());
 for (const id of ['showNav', 'showNavLinks']) $(id).addEventListener('change', rebuildNav);
